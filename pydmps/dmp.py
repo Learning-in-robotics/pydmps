@@ -153,7 +153,7 @@ class DMPs(object):
         self.reset_state()
         return y_des
 
-    def rollout(self, timesteps=None, **kwargs):
+    def rollout(self, timesteps=None, **kwargs): 
         """Generate a system trial, no feedback is incorporated."""
 
         self.reset_state()
@@ -168,19 +168,21 @@ class DMPs(object):
         y_track = np.zeros((timesteps, self.n_dmps))
         dy_track = np.zeros((timesteps, self.n_dmps))
         ddy_track = np.zeros((timesteps, self.n_dmps))
+        f_track = np.zeros((timesteps, self.n_dmps))
 
         for t in range(timesteps):
 
             # run and record timestep
-            y_track[t], dy_track[t], ddy_track[t] = self.step(**kwargs)
+            y_track[t], dy_track[t], ddy_track[t], f_track[t] = self.step(**kwargs)
 
-        return y_track, dy_track, ddy_track
+        return y_track, dy_track, ddy_track, f_track
 
     def reset_state(self):
         """Reset the system state"""
         self.y = self.y0.copy()
         self.dy = np.zeros(self.n_dmps)
         self.ddy = np.zeros(self.n_dmps)
+        self.f_val = np.zeros(self.n_dmps)
         self.cs.reset_state()
 
     def step(self, tau=1.0, error=0.0, external_force=None):
@@ -198,6 +200,8 @@ class DMPs(object):
         # generate basis function activation
         psi = self.gen_psi(x)
 
+        
+
         for d in range(self.n_dmps):
 
             # generate the forcing term
@@ -205,7 +209,9 @@ class DMPs(object):
             sum_psi = np.sum(psi)
             if np.abs(sum_psi) > 1e-6:
                 f /= sum_psi
-
+            
+            self.f_val[d]= f
+            
             # DMP acceleration
             self.ddy[d] = (
                 self.ay[d] * (self.by[d] * (self.goal[d] - self.y[d]) - self.dy[d]) + f
@@ -214,5 +220,6 @@ class DMPs(object):
                 self.ddy[d] += external_force[d]
             self.dy[d] += self.ddy[d] * tau * self.dt * error_coupling
             self.y[d] += self.dy[d] * tau * self.dt * error_coupling
+        
 
-        return self.y, self.dy, self.ddy
+        return self.y, self.dy, self.ddy, self.f_val

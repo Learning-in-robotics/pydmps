@@ -122,17 +122,17 @@ if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
     # test normal run
-    dmp = DMPs_discrete(dt=0.05, n_dmps=1, n_bfs=10, w=np.zeros((1, 10)))
-    y_track, dy_track, ddy_track, f_track  = dmp.rollout()
+    # dmp = DMPs_discrete(dt=0.05, n_dmps=1, n_bfs=10, w=np.zeros((1, 10)))
+    # y_track, dy_track, ddy_track, f_track  = dmp.rollout()
  
     plt.figure(1, figsize=(6, 3))
-    plt.plot(np.ones(len(y_track)) * dmp.goal, "r--", lw=2)
-    plt.plot(y_track, lw=2)
-    plt.title("DMP system - no forcing term")
-    plt.xlabel("time (ms)")
-    plt.ylabel("system trajectory")
-    plt.legend(["goal", "system state"], loc="lower right")
-    plt.tight_layout()
+    # plt.plot(np.ones(len(y_track)) * dmp.goal, "r--", lw=2)
+    # plt.plot(y_track, lw=2)
+    # plt.title("DMP system - no forcing term")
+    # plt.xlabel("time (ms)")
+    # plt.ylabel("system trajectory")
+    # plt.legend(["goal", "system state"], loc="lower right")
+    # plt.tight_layout()
 
     def generate_random_curve(start_point=(0, 0), end_point=(5, 3), amplitude_sin=0.5, frequency_sin=2*np.pi/(5-0), phase_shift_sin=np.pi/2):
         # Generate x points between start_point and end_point
@@ -181,7 +181,7 @@ if __name__ == "__main__":
         dmp.goal[0] = 0.5
         dmp.goal[1] = -2.5
 
-        y_track, dy_track, ddy_track, f_track = dmp.rollout()
+        y_track, dy_track, ddy_track, clock_track, f_track = dmp.rollout()
         plt.figure(2)
         plt.subplot(211)
         plt.plot(y_track[:, 0], lw=2)
@@ -189,7 +189,7 @@ if __name__ == "__main__":
         plt.plot(y_track[:, 1], lw=2)
         # plt.subplot(213)
         # plt.plot(f_values, label="Forcing Terms")
-        print(f_track)
+        # print(f_track)
 
     plt.subplot(211)
     a = plt.plot(path1 / path1[-1] * dmp.goal[0], "r--", lw=2)

@@ -170,12 +170,14 @@ class DMPs(object):
         ddy_track = np.zeros((timesteps, self.n_dmps))
         f_track = np.zeros((timesteps, self.n_dmps))
 
+        clock_track = []
+
         for t in range(timesteps):
-
             # run and record timestep
-            y_track[t], dy_track[t], ddy_track[t], f_track[t] = self.step(**kwargs)
+            y_track[t], dy_track[t], ddy_track[t], x, f_track[t] = self.step(**kwargs)
+            clock_track.append(x)
 
-        return y_track, dy_track, ddy_track, f_track
+        return y_track, dy_track, ddy_track, clock_track, f_track
 
     def reset_state(self):
         """Reset the system state"""
@@ -196,7 +198,7 @@ class DMPs(object):
         error_coupling = 1.0 / (1.0 + error)
         # run canonical system
         x = self.cs.step(tau=tau, error_coupling=error_coupling)
-
+        # print(x)
         # generate basis function activation
         psi = self.gen_psi(x)
 
@@ -222,4 +224,4 @@ class DMPs(object):
             self.y[d] += self.dy[d] * tau * self.dt * error_coupling
         
 
-        return self.y, self.dy, self.ddy, self.f_val
+        return self.y, self.dy, self.ddy, x, self.f_val

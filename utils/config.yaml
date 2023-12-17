@@ -1,0 +1,4 @@
+n_dmps: 2 
+n_bfs: 100 #later add support for list and other params
+input_path: /input_data.yaml
+output_path: /output_data.yaml

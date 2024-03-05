@@ -15,8 +15,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
 from pydmps.cs import CanonicalSystem
+from pydmps.utils.dmpnet import DMPNetwork
+from pydmps.utils.parser import TrajectoryParser
 
 
 class DMPs(object):
@@ -38,7 +43,7 @@ class DMPs(object):
         """
 
         self.n_dmps = n_dmps
-        self.n_bfs = n_bfs
+
         self.dt = dt
         if isinstance(y0, (int, float)):
             y0 = np.ones(self.n_dmps) * y0
@@ -46,10 +51,14 @@ class DMPs(object):
         if isinstance(goal, (int, float)):
             goal = np.ones(self.n_dmps) * goal
         self.goal = goal
-        if w is None:
-            # default is f = 0
-            w = np.zeros((self.n_dmps, self.n_bfs))
-        self.w = w
+        # if w is None:
+        #     # default is f = 0
+        #     w = np.zeros((self.n_dmps, self.n_bfs))
+        # self.w = w
+
+        self.dataset_path = '/home/hamsadatta/test/dmp/my/pydmps/pydmps/utils/dataset'
+        self.save_model_path = '/home/hamsadatta/test/dmp/my/pydmps/pydmps/utils/trained_model.pt' 
+        self.net = DMPNetwork(7, 128, 6)
 
         self.ay = np.ones(n_dmps) * 25.0 if ay is None else ay  # Schaal 2012
         self.by = self.ay / 4.0 if by is None else by  # Schaal 2012
@@ -68,18 +77,59 @@ class DMPs(object):
         for d in range(self.n_dmps):
             if abs(self.y0[d] - self.goal[d]) < 1e-4:
                 self.goal[d] += 1e-4
+    
+    def train_network(self):
 
-    def gen_front_term(self, x, dmp_num):
-        raise NotImplementedError()
+        print("Data Loading...")
+        parser = TrajectoryParser(self.dataset_path)
+        parser.process_folder()
+        print("Data Loading Done")
 
-    def gen_goal(self, y_des):
-        raise NotImplementedError()
+        data = parser.data_matrix
+        labels = parser.labels_matrix
+        num_of_trajectories = len(data)
 
-    def gen_psi(self):
-        raise NotImplementedError()
+        # Define loss function and optimizer
+        criterion = nn.MSELoss()
+        optimizer = optim.Adam(self.net.parameters(), lr=self.learning_rate)
 
-    def gen_weights(self, f_target):
-        raise NotImplementedError()
+        print("Starting Training....")
+
+        # Training loop
+        for epoch in range(self.num_epochs):
+            total_loss = 0.0  # Initialize the total loss for this epoch
+
+            # Iterate through each trajectory
+            for i in range(num_of_trajectories):
+                # Forward pass
+                outputs = self.net(torch.Tensor(data[i]))
+                loss = criterion(outputs, torch.Tensor(labels[i]))
+                
+                # Backpropagation and optimization
+                optimizer.zero_grad()
+                loss.backward()
+                optimizer.step()
+
+                total_loss += loss.item()  # Accumulate the loss for this batch
+            
+            # Print training progress
+            if (epoch + 1) % 100 == 0:
+                print(f'Epoch [{epoch + 1}/{self.num_epochs}], Loss: {total_loss:.4f}')
+
+        # Save the trained model to a .pt file
+        torch.save(self.net.state_dict(), self.save_model_path)
+
+        print("Training finished. Model saved as 'trained_model.pt'.")
+    
+    def get_forcing_term(self,input_data):
+        # Load the trained model's state dictionary
+        self.net.load_state_dict(torch.load(self.save_model_path))
+
+        # Set the model to evaluation mode
+        self.net.eval()
+        f_term = self.net(input_data)
+
+        return f_term
 
     def imitate_path(self, y_des, plot=False):
         """Takes in a desired trajectory and generates the set of
@@ -96,64 +146,12 @@ class DMPs(object):
         self.y_des = y_des.copy()
         self.goal = self.gen_goal(y_des)
 
-        # self.check_offset()
-
-        # generate function to interpolate the desired trajectory
-        import scipy.interpolate
-
-        path = np.zeros((self.n_dmps, self.timesteps))
-        x = np.linspace(0, self.cs.run_time, y_des.shape[1])
-        for d in range(self.n_dmps):
-            path_gen = scipy.interpolate.interp1d(x, y_des[d])
-            for t in range(self.timesteps):
-                path[d, t] = path_gen(t * self.dt)
-        y_des = path
-
-        # calculate velocity of y_des with central differences
-        dy_des = np.gradient(y_des, axis=1) / self.dt
-
-        # calculate acceleration of y_des with central differences
-        ddy_des = np.gradient(dy_des, axis=1) / self.dt
-
-        f_target = np.zeros((y_des.shape[1], self.n_dmps))
-        # find the force required to move along this trajectory
-        for d in range(self.n_dmps):
-            f_target[:, d] = ddy_des[d] - self.ay[d] * (
-                self.by[d] * (self.goal[d] - y_des[d]) - dy_des[d]
-            )
-
-        # efficiently generate weights to realize f_target
-        self.gen_weights(f_target)
-
-        if plot is True:
-            # plot the basis function activations
-            import matplotlib.pyplot as plt
-
-            plt.figure()
-            plt.subplot(211)
-            psi_track = self.gen_psi(self.cs.rollout())
-            plt.plot(psi_track)
-            plt.title("basis functions")
-
-            # plot the desired forcing function vs approx
-            for ii in range(self.n_dmps):
-                plt.subplot(2, self.n_dmps, self.n_dmps + 1 + ii)
-                plt.plot(f_target[:, ii], "--", label="f_target %i" % ii)
-            for ii in range(self.n_dmps):
-                plt.subplot(2, self.n_dmps, self.n_dmps + 1 + ii)
-                plt.plot(
-                    np.sum(psi_track * self.w[ii], axis=1) * self.dt,
-                    label="w*psi %i" % ii,
-                )
-                plt.legend()
-            plt.title("DMP forcing function")
-            plt.tight_layout()
-            plt.show()
+        self.train_network()
 
         self.reset_state()
-        return y_des
+        # return y_des
 
-    def rollout(self, timesteps=None, **kwargs): 
+    def rollout(self, current_point, timesteps=None, **kwargs): 
         """Generate a system trial, no feedback is incorporated."""
 
         self.reset_state()
@@ -174,7 +172,7 @@ class DMPs(object):
 
         for t in range(timesteps):
             # run and record timestep
-            y_track[t], dy_track[t], ddy_track[t], x, f_track[t] = self.step(**kwargs)
+            y_track[t], dy_track[t], ddy_track[t], x, f_track[t] = self.step(current_point, **kwargs)
             clock_track.append(x)
 
         return y_track, dy_track, ddy_track, clock_track, f_track
@@ -187,41 +185,28 @@ class DMPs(object):
         self.f_val = np.zeros(self.n_dmps)
         self.cs.reset_state()
 
-    def step(self, tau=1.0, error=0.0, external_force=None):
+    def step(self, current_point, tau=1.0, error=0.0, external_force=None):
         """Run the DMP system for a single timestep.
 
         tau float: scales the timestep
                    increase tau to make the system execute faster
         error float: optional system feedback
         """
-
         error_coupling = 1.0 / (1.0 + error)
         # run canonical system
         x = self.cs.step(tau=tau, error_coupling=error_coupling)
-        # print(x)
-        # generate basis function activation
-        psi = self.gen_psi(x)
-
         
-
+        # generate the forcing term
+        f = self.get_forcing_term(current_point)       
         for d in range(self.n_dmps):
-
-            # generate the forcing term
-            f = self.gen_front_term(x, d) * (np.dot(psi, self.w[d]))
-            sum_psi = np.sum(psi)
-            if np.abs(sum_psi) > 1e-6:
-                f /= sum_psi
-            
-            self.f_val[d]= f
-            
+            self.f_val[d]= f[d]            
             # DMP acceleration
             self.ddy[d] = (
-                self.ay[d] * (self.by[d] * (self.goal[d] - self.y[d]) - self.dy[d]) + f
+                self.ay[d] * (self.by[d] * (self.goal[d] - self.y[d]) - self.dy[d]) + f[d]
             )
             if external_force is not None:
                 self.ddy[d] += external_force[d]
             self.dy[d] += self.ddy[d] * tau * self.dt * error_coupling
             self.y[d] += self.dy[d] * tau * self.dt * error_coupling
-        
 
-        return self.y, self.dy, self.ddy, x, self.f_val
+        return self.y, self.dy, self.ddy, f

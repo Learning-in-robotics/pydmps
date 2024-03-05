@@ -81,18 +81,6 @@ class CanonicalSystem:
         self.x += (-self.ax * self.x * error_coupling) * tau * self.dt
         return self.x
 
-    def step_rhythmic(self, tau=1.0, error_coupling=1.0):
-        """Generate a single step of x for rhythmic
-        closed loop movements. Decaying from 1 to 0
-        according to dx = -ax*x.
-
-        tau float: gain on execution time
-                   increase tau to make the system execute faster
-        error_coupling float: slow down if the error is > 1
-        """
-        self.x += (1 * error_coupling * tau) * self.dt
-        return self.x
-
 
 # ==============================
 # Test code

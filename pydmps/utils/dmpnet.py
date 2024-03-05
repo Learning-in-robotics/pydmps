@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.optim as optim
 from pydmps.utils.parser import TrajectoryParser
 
-class NeuralNetwork(nn.Module):
+class DMPNetwork(nn.Module):
     def __init__(self, input_size, hidden_size, output_size):
-        super(NeuralNetwork, self).__init__()
+        super(DMPNetwork, self).__init__()
         
         # Define the layers
         self.input_layer = nn.Linear(input_size, hidden_size)
@@ -13,7 +13,7 @@ class NeuralNetwork(nn.Module):
         self.hidden_layer2 = nn.Linear(hidden_size, hidden_size)
         self.output_layer = nn.Linear(hidden_size, output_size)
 
-        # Define activation function (you can change this to another activation if needed)
+        # Activation function 
         self.activation = nn.ReLU()
 
     def forward(self, x):
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     num_of_trajectories = len(data)
 
     # Create an instance of the neural network
-    net = NeuralNetwork(input_size, hidden_size, output_size)
+    net = DMPNetwork(input_size, hidden_size, output_size)
 
     # Define loss function and optimizer
     criterion = nn.MSELoss()

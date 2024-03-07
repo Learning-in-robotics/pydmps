@@ -29,7 +29,7 @@ class DMPs(object):
     as described in Dr. Stefan Schaal's (2002) paper."""
 
     def __init__(
-        self, n_dmps, n_bfs, dt=0.01, y0=0, goal=1, w=None, ay=None, by=None, **kwargs
+        self, n_dmps, load_model = False, dt=0.01, y0=0, goal=1, ay=None, by=None, **kwargs
     ):
         """
         n_dmps int: number of dynamic motor primitives
@@ -43,7 +43,6 @@ class DMPs(object):
         """
 
         self.n_dmps = n_dmps
-
         self.dt = dt
         if isinstance(y0, (int, float)):
             y0 = np.ones(self.n_dmps) * y0
@@ -51,14 +50,16 @@ class DMPs(object):
         if isinstance(goal, (int, float)):
             goal = np.ones(self.n_dmps) * goal
         self.goal = goal
-        # if w is None:
-        #     # default is f = 0
-        #     w = np.zeros((self.n_dmps, self.n_bfs))
-        # self.w = w
-
-        self.dataset_path = '/home/hamsadatta/test/dmp/my/pydmps/pydmps/utils/dataset'
-        self.save_model_path = '/home/hamsadatta/test/dmp/my/pydmps/pydmps/utils/trained_model.pt' 
+        self.dataset_path = '/home/hamsadatta/test/dmp/rl/pydmps/pydmps/utils/dataset'
+        self.save_model_path = '/home/hamsadatta/test/dmp/rl/pydmps/pydmps/utils/trained_model.pt'        
         self.net = DMPNetwork(7, 128, 6)
+
+        if load_model == True:             
+            # Load the trained model's state dictionary
+            self.net.load_state_dict(torch.load(self.save_model_path))
+            # Set the model to evaluation mode
+            self.net.eval()
+        
 
         self.ay = np.ones(n_dmps) * 25.0 if ay is None else ay  # Schaal 2012
         self.by = self.ay / 4.0 if by is None else by  # Schaal 2012
@@ -122,45 +123,29 @@ class DMPs(object):
         print("Training finished. Model saved as 'trained_model.pt'.")
     
     def get_forcing_term(self,input_data):
-        # Load the trained model's state dictionary
-        self.net.load_state_dict(torch.load(self.save_model_path))
-
-        # Set the model to evaluation mode
-        self.net.eval()
-        f_term = self.net(input_data)
+        with torch.no_grad():
+            input_data = torch.Tensor(input_data)
+            f_term = self.net(input_data)
 
         return f_term
 
-    def imitate_path(self, y_des, plot=False):
-        """Takes in a desired trajectory and generates the set of
-        system parameters that best realize this path.
-
-        y_des list/array: the desired trajectories of each DMP
-                          should be shaped [n_dmps, run_time]
-        """
-
-        # set initial state and goal
-        if y_des.ndim == 1:
-            y_des = y_des.reshape(1, len(y_des))
-        self.y0 = y_des[:, 0].copy()
-        self.y_des = y_des.copy()
-        self.goal = self.gen_goal(y_des)
+    def imitate_path(self):
 
         self.train_network()
 
         self.reset_state()
-        # return y_des
 
-    def rollout(self, current_point, timesteps=None, **kwargs): 
+
+    def rollout(self, current_point, timesteps=1.0, **kwargs): 
         """Generate a system trial, no feedback is incorporated."""
 
-        self.reset_state()
+        # self.reset_state()
 
-        if timesteps is None:
-            if "tau" in kwargs:
-                timesteps = int(self.timesteps / kwargs["tau"])
-            else:
-                timesteps = self.timesteps
+        # if timesteps is None:
+        #     if "tau" in kwargs:
+        #         timesteps = int(self.timesteps / kwargs["tau"])
+        #     else:
+        #         timesteps = self.timesteps
 
         # set up tracking vectors
         y_track = np.zeros((timesteps, self.n_dmps))
@@ -168,14 +153,13 @@ class DMPs(object):
         ddy_track = np.zeros((timesteps, self.n_dmps))
         f_track = np.zeros((timesteps, self.n_dmps))
 
-        clock_track = []
 
-        for t in range(timesteps):
+        # for t in range(timesteps):
             # run and record timestep
-            y_track[t], dy_track[t], ddy_track[t], x, f_track[t] = self.step(current_point, **kwargs)
-            clock_track.append(x)
+        y_track, dy_track, ddy_track, f_track, x  = self.step(current_point, **kwargs)
+            # clock_track.append(x)
 
-        return y_track, dy_track, ddy_track, clock_track, f_track
+        return y_track, dy_track, ddy_track, f_track, x
 
     def reset_state(self):
         """Reset the system state"""
@@ -195,9 +179,11 @@ class DMPs(object):
         error_coupling = 1.0 / (1.0 + error)
         # run canonical system
         x = self.cs.step(tau=tau, error_coupling=error_coupling)
+        current_point.append(x)
         
         # generate the forcing term
-        f = self.get_forcing_term(current_point)       
+        f = self.get_forcing_term(current_point)  
+
         for d in range(self.n_dmps):
             self.f_val[d]= f[d]            
             # DMP acceleration
@@ -209,4 +195,4 @@ class DMPs(object):
             self.dy[d] += self.ddy[d] * tau * self.dt * error_coupling
             self.y[d] += self.dy[d] * tau * self.dt * error_coupling
 
-        return self.y, self.dy, self.ddy, f
+        return self.y, self.dy, self.ddy, f ,x

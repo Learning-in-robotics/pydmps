@@ -26,7 +26,24 @@ from pydmps.dmp import DMPs
 from pydmps.utils.dmpnet import DMPNetwork
 from pydmps.utils.parser import TrajectoryParser
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
+import copy
 
+def plot_pose(y_tracks):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+    
+    for y_track in y_tracks:
+        ax.scatter(y_track[0], y_track[1], y_track[2])
+    
+    # ax.plot(x, y, z)
+    
+    ax.set_xlabel('X')
+    ax.set_ylabel('Y')
+    ax.set_zlabel('Z')
+    
+    plt.show()
 
 class DMPs_discrete(DMPs):
     """An implementation of discrete DMPs"""
@@ -42,7 +59,7 @@ class DMPs_discrete(DMPs):
         self.hidden_size = 128  # Number of neurons in each hidden layer
         self.output_size = 6  # Output layer predicts forcing terms for (x, y)
         self.learning_rate = 0.01
-        self.num_epochs = 10000
+        self.num_epochs = 1000
 
         
 
@@ -82,7 +99,7 @@ if __name__ == "__main__":
     # dmp = DMPs_discrete(dt=0.05, n_dmps=1, n_bfs=10, w=np.zeros((1, 10)))
     # y_track, dy_track, ddy_track, f_track  = dmp.rollout()
  
-    plt.figure(1, figsize=(6, 3))
+    # plt.figure(1, figsize=(6, 3))
     # plt.plot(np.ones(len(y_track)) * dmp.goal, "r--", lw=2)
     # plt.plot(y_track, lw=2)
     # plt.title("DMP system - no forcing term")
@@ -115,7 +132,7 @@ if __name__ == "__main__":
     xy_array = generate_random_curve()
 
     # test imitation of path run
-    plt.figure(2, figsize=(6, 4))
+    # plt.figure(2, figsize=(6, 4))
     # n_bfs = [10, 30, 50, 100, 10000]
     n_bfs = [100]
 
@@ -129,51 +146,25 @@ if __name__ == "__main__":
     path1 = xy_array[0]
     path2 = xy_array[1]
 
+    current_point = [-0.22413162636020156, 0.03672257898841529, 1.0070652249653813, -2.672549100764965, 0.11178945152440055, -0.05323406781316968]
 
+    my_goal = [0.2405904497616017, 0.025670480673161248, 0.9405305042288513, -2.627904589695221, 0.07141495502943067, -0.08656735603506686]
     # for ii, bfs in enumerate(n_bfs):
-    dmp = DMPs_discrete(n_dmps=2, n_bfs=0)
+    dmp = DMPs_discrete(n_dmps=6)
 
-    dmp.imitate_path(y_des=np.array([path1, path2]))
+    # dmp.imitate_path()
     # change the scale of the movement
-    dmp.goal[0] = 0.5
-    dmp.goal[1] = -2.5
-
-    y_track, dy_track, ddy_track, f_track = dmp.rollout(current_point)
-
-
-
-
-    # plt.figure(2)
-    # plt.subplot(211)
-    # plt.plot(y_track[:, 0], lw=2)
-    # plt.subplot(212)
-    # plt.plot(y_track[:, 1], lw=2)
-    # plt.subplot(213)
-    # plt.plot(f_values, label="Forcing Terms")
-    # print(f_track)
-
-    # plt.subplot(211)
-    # a = plt.plot(path1 / path1[-1] * dmp.goal[0], "r--", lw=2)
-    # plt.title("DMP imitate path")
-    # plt.xlabel("time (ms)")
-    # plt.ylabel("system trajectory")
-    # plt.legend([a[0]], ["desired path"], loc="lower right")
-    # plt.subplot(212)
-    # b = plt.plot(path2 / path2[-1] * dmp.goal[1], "r--", lw=2)
-    # plt.title("DMP imitate path")
-    # plt.xlabel("time (ms)")
-    # plt.ylabel("system trajectory")
-    # plt.legend(["%i BFs" % i for i in n_bfs], loc="lower right")
-
-    # plt.tight_layout()
-
-
-    # plt.figure(3)
-    # plt.scatter(y_track[:, 0], y_track[:, 1], linestyle='-')
-
-    # plt.figure(4)
-    # plt.scatter(f_track[:, 0], f_track[:, 1], linestyle='-')
-
-
-
-    # plt.show()
+    dmp.goal = my_goal
+    # dmp.goal[1] = -2.51
+    test=[]
+    x_track = 0.99
+    print("start")
+    while (x_track>0.0001):
+        y_track, dy_track, ddy_track, f_track, x_track = dmp.rollout(current_point,1)
+        print(y_track)        
+        current_point = copy.deepcopy(y_track.tolist())
+        test.append(current_point)        
+    # test = np.array(test)
+    print(test)
+    plot_pose(test)
+    

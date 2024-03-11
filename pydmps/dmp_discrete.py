@@ -43,7 +43,7 @@ class DMPs_discrete(DMPs):
         self.hidden_size = 128  # Number of neurons in each hidden layer
         self.output_size = 6  # Output layer predicts forcing terms for (x, y)
         self.learning_rate = 0.01
-        self.num_epochs = 5000
+        self.num_epochs = 10000
         self.batch_size = 100
 
         # call super class constructor
@@ -150,7 +150,7 @@ if __name__ == "__main__":
     test = np.array(test)
 
     # load trajectory_1.yaml from dataset
-    dataset_path = "pydmps/dataset"
+    dataset_path = "../pydmps/dataset"
     # load yaml file
     with open(f"{dataset_path}/trajectory_1.yaml") as file:
         trajectory1 = yaml.load(file, Loader=yaml.FullLoader)

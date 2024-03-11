@@ -31,29 +31,31 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import copy
 
+
 def plot_pose(y_tracks):
     fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
-    
+    ax = fig.add_subplot(111, projection="3d")
+
     for y_track in y_tracks:
         ax.scatter(y_track[0], y_track[1], y_track[2])
-    
+
     # ax.plot(x, y, z)
-    
-    ax.set_xlabel('X')
-    ax.set_ylabel('Y')
-    ax.set_zlabel('Z')
-    
+
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.set_zlabel("Z")
+
     plt.show()
+
 
 class DMPs_discrete(DMPs):
     """An implementation of discrete DMPs"""
 
-    def __init__(self, load_model = False, **kwargs):
+    def __init__(self, load_model=False, **kwargs):
         # call super class constructor
-        super(DMPs_discrete, self).__init__(pattern="discrete", load_model=load_model, **kwargs)
-
-         
+        super(DMPs_discrete, self).__init__(
+            pattern="discrete", load_model=load_model, **kwargs
+        )
 
         # Specify the input, hidden, and output layer sizes
         self.input_size = 7  # Input layer accepts (x, y)
@@ -63,8 +65,7 @@ class DMPs_discrete(DMPs):
         self.num_epochs = 5000
         self.batch_size = 100
 
-        self.check_offset()    
-   
+        self.check_offset()
 
     def gen_front_term(self, x, dmp_num):
         """Generates the diminishing front term on
@@ -84,16 +85,15 @@ class DMPs_discrete(DMPs):
         """
 
         return np.copy(y_des[:, -1])
-    
 
 
 # ==============================
 # Test code
 # ==============================
 if __name__ == "__main__":
-    argparse = argparse.ArgumentParser(description='DMPs_discrete')
-    argparse.add_argument('--train', action='store_true', help='Train the network')
-    argparse.add_argument('--test', action='store_true', help='Test the network')
+    argparse = argparse.ArgumentParser(description="DMPs_discrete")
+    argparse.add_argument("--train", action="store_true", help="Train the network")
+    argparse.add_argument("--test", action="store_true", help="Test the network")
 
     args = argparse.parse_args()
 
@@ -111,21 +111,35 @@ if __name__ == "__main__":
         dmp.imitate_path()
         exit()
 
-    current_point = [-0.22413162636020156, 0.03672257898841529, 1.0070652249653813, -2.672549100764965, 0.11178945152440055, -0.05323406781316968]
+    current_point = [
+        -0.22413162636020156,
+        0.03672257898841529,
+        1.0070652249653813,
+        -2.672549100764965,
+        0.11178945152440055,
+        -0.05323406781316968,
+    ]
 
-    my_goal = [0.2405904497616017, 0.025670480673161248, 0.9405305042288513, -2.627904589695221, 0.07141495502943067, -0.08656735603506686]
-    
+    my_goal = [
+        0.2405904497616017,
+        0.025670480673161248,
+        0.9405305042288513,
+        -2.627904589695221,
+        0.07141495502943067,
+        -0.08656735603506686,
+    ]
+
     # change the scale of the movement
     dmp.goal = my_goal
     # dmp.goal[1] = -2.51
-    test=np.array([])
+    test = np.array([])
     x_track = 0.99
     print("start")
-    while (x_track>0.0001):
-        y_track, dy_track, ddy_track, f_track, x_track = dmp.rollout(current_point,1)
+    while x_track > 0.0001:
+        y_track, dy_track, ddy_track, f_track, x_track = dmp.rollout(current_point, 1)
         current_point = copy.deepcopy(y_track.tolist())
         # append the y_track to test
-        if test.size==0:
+        if test.size == 0:
             test = y_track
         else:
             test = np.vstack((test, y_track))
@@ -137,12 +151,12 @@ if __name__ == "__main__":
     # plot_pose(test)
 
     # load trajectory_1.yaml from dataset
-    dataset_path = 'pydmps/utils/dataset'
+    dataset_path = "pydmps/utils/dataset"
     # load yaml file
-    with open(f'{dataset_path}/trajectory_1.yaml') as file:
+    with open(f"{dataset_path}/trajectory_1.yaml") as file:
         trajectory1 = yaml.load(file, Loader=yaml.FullLoader)
 
-    trajectory1_y_track = trajectory1['y_track']
+    trajectory1_y_track = trajectory1["y_track"]
     trajectory1_y_track = np.array(trajectory1_y_track)
     print(trajectory1_y_track.shape)
 
@@ -151,20 +165,19 @@ if __name__ == "__main__":
     # plot xy, yz and zx points
     fig, ax = plt.subplots(3, 2, figsize=(6, 6))
     ax[0, 0].plot(test[:, 0], test[:, 1])
-    ax[0, 0].set_title('xy')
+    ax[0, 0].set_title("xy")
     ax[1, 0].plot(test[:, 1], test[:, 2])
-    ax[1, 0].set_title('yz')
+    ax[1, 0].set_title("yz")
     ax[2, 0].plot(test[:, 2], test[:, 0])
-    ax[2, 0].set_title('zx')
+    ax[2, 0].set_title("zx")
 
-    # plot trajectory_1 
+    # plot trajectory_1
     ax[0, 1].plot(trajectory1_y_track[:, 0], trajectory1_y_track[:, 1])
-    ax[0, 1].set_title('xy')
+    ax[0, 1].set_title("xy")
     ax[1, 1].plot(trajectory1_y_track[:, 1], trajectory1_y_track[:, 2])
-    ax[1, 1].set_title('yz')
+    ax[1, 1].set_title("yz")
     ax[2, 1].plot(trajectory1_y_track[:, 2], trajectory1_y_track[:, 0])
-    ax[2, 1].set_title('zx')
-    
+    ax[2, 1].set_title("zx")
+
     plt.tight_layout()
     plt.show()
-    

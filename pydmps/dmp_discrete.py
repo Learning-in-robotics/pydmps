@@ -52,18 +52,19 @@ class DMPs_discrete(DMPs):
     """An implementation of discrete DMPs"""
 
     def __init__(self, load_model=False, **kwargs):
-        # call super class constructor
-        super(DMPs_discrete, self).__init__(
-            pattern="discrete", load_model=load_model, **kwargs
-        )
 
         # Specify the input, hidden, and output layer sizes
         self.input_size = 7  # Input layer accepts (x, y)
         self.hidden_size = 128  # Number of neurons in each hidden layer
         self.output_size = 6  # Output layer predicts forcing terms for (x, y)
-        self.learning_rate = 0.01
-        self.num_epochs = 5000
+        self.learning_rate = 1e-3
+        self.num_epochs = 10000
         self.batch_size = 100
+
+        # call super class constructor
+        super(DMPs_discrete, self).__init__(
+            pattern="discrete", load_model=load_model, **kwargs
+        )
 
         self.check_offset()
 

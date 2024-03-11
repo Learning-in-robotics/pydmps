@@ -32,18 +32,17 @@ from mpl_toolkits.mplot3d import Axes3D
 import copy
 
 
-def plot_pose(y_tracks):
+def plot_pose(y_tracks, raw_y_tracks):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection="3d")
-
-    for y_track in y_tracks:
-        ax.scatter(y_track[0], y_track[1], y_track[2])
-
-    # ax.plot(x, y, z)
-
+    
+    ax.plot(y_tracks[:, 0], y_tracks[:, 1], y_tracks[:, 2], label="DMP")
+    ax.plot(raw_y_tracks[:, 0], raw_y_tracks[:, 1], raw_y_tracks[:, 2], label="Raw")
+    
     ax.set_xlabel("X")
     ax.set_ylabel("Y")
     ax.set_zlabel("Z")
+    ax.legend()
 
     plt.show()
 
@@ -167,20 +166,18 @@ if __name__ == "__main__":
     # convert to numpy array
     test = np.array(test)
 
+    # load trajectory_1.yaml from dataset
+    dataset_path = "pydmps/utils/dataset"
+    # load yaml file
+    with open(f"{dataset_path}/trajectory_1.yaml") as file:
+        trajectory1 = yaml.load(file, Loader=yaml.FullLoader)
+
+    trajectory1_y_track = trajectory1["y_track"]
+    trajectory1_y_track = np.array(trajectory1_y_track)
+
     if plot_3d:
-        plot_pose(test)
+        plot_pose(test, trajectory1_y_track)
     else:
-        # load trajectory_1.yaml from dataset
-        dataset_path = "pydmps/utils/dataset"
-        # load yaml file
-        with open(f"{dataset_path}/trajectory_1.yaml") as file:
-            trajectory1 = yaml.load(file, Loader=yaml.FullLoader)
-
-        trajectory1_y_track = trajectory1["y_track"]
-        trajectory1_y_track = np.array(trajectory1_y_track)
-
-        # plot_pose(trajectory1_y_track)
-
         # plot xy, yz and zx points
         fig, ax = plt.subplots(3, 2, figsize=(6, 6))
         ax[0, 0].plot(test[:, 0], test[:, 1])

@@ -46,6 +46,26 @@ def plot_pose(y_tracks, raw_y_tracks):
 
     plt.show()
 
+def plot_2d(y_tracks, raw_y_tracks):
+    fig, ax = plt.subplots(3, 2, figsize=(6, 6))
+    ax[0, 0].plot(y_tracks[:, 0], y_tracks[:, 1])
+    ax[0, 0].set_title("xy")
+    ax[1, 0].plot(y_tracks[:, 1], y_tracks[:, 2])
+    ax[1, 0].set_title("yz")
+    ax[2, 0].plot(y_tracks[:, 2], y_tracks[:, 0])
+    ax[2, 0].set_title("zx")
+
+    # plot trajectory_1
+    ax[0, 1].plot(raw_y_tracks[:, 0], raw_y_tracks[:, 1])
+    ax[0, 1].set_title("xy")
+    ax[1, 1].plot(raw_y_tracks[:, 1], raw_y_tracks[:, 2])
+    ax[1, 1].set_title("yz")
+    ax[2, 1].plot(raw_y_tracks[:, 2], raw_y_tracks[:, 0])
+    ax[2, 1].set_title("zx")
+
+    plt.tight_layout()
+    plt.show()
+
 
 class DMPs_discrete(DMPs):
     """An implementation of discrete DMPs"""
@@ -56,7 +76,7 @@ class DMPs_discrete(DMPs):
         self.input_size = 7  # Input layer accepts (x, y)
         self.hidden_size = 128  # Number of neurons in each hidden layer
         self.output_size = 6  # Output layer predicts forcing terms for (x, y)
-        self.learning_rate = 1e-3
+        self.learning_rate = 0.01
         self.num_epochs = 10000
         self.batch_size = 100
 
@@ -179,21 +199,4 @@ if __name__ == "__main__":
         plot_pose(test, trajectory1_y_track)
     else:
         # plot xy, yz and zx points
-        fig, ax = plt.subplots(3, 2, figsize=(6, 6))
-        ax[0, 0].plot(test[:, 0], test[:, 1])
-        ax[0, 0].set_title("xy")
-        ax[1, 0].plot(test[:, 1], test[:, 2])
-        ax[1, 0].set_title("yz")
-        ax[2, 0].plot(test[:, 2], test[:, 0])
-        ax[2, 0].set_title("zx")
-
-        # plot trajectory_1
-        ax[0, 1].plot(trajectory1_y_track[:, 0], trajectory1_y_track[:, 1])
-        ax[0, 1].set_title("xy")
-        ax[1, 1].plot(trajectory1_y_track[:, 1], trajectory1_y_track[:, 2])
-        ax[1, 1].set_title("yz")
-        ax[2, 1].plot(trajectory1_y_track[:, 2], trajectory1_y_track[:, 0])
-        ax[2, 1].set_title("zx")
-
-        plt.tight_layout()
-        plt.show()
+        plot_2d(test, trajectory1_y_track)

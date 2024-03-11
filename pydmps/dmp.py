@@ -14,7 +14,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
+import os
 import numpy as np
 import torch
 import torch.nn as nn
@@ -25,6 +25,9 @@ from pydmps.utils.dmpnet import DMPNetwork
 from pydmps.utils.parser import TrajectoryParser
 
 from torch.utils.data.dataset import random_split
+
+import importlib.util
+from pathlib import Path
 
 
 class DMPs(object):
@@ -37,8 +40,6 @@ class DMPs(object):
         load_model=False,
         model_name=None,
         dt=0.01,
-        y0=None,
-        goal=None,
         ay=None,
         by=None,
         **kwargs,
@@ -56,14 +57,14 @@ class DMPs(object):
 
         self.n_dmps = n_dmps
         self.dt = dt
-        if y0 is None:
-            raise ValueError("Initial position is required")
-        self.y0 = y0
-        if goal is None:
-            raise ValueError("Goal is required")
-        self.goal = goal
-        self.dataset_path = "pydmps/dataset"
-        self.save_model_path = f"pydmps/models/{model_name}.pt"
+
+        self.y0 = None
+        self.goal = None
+
+        pkg_path = Path(importlib.util.find_spec("pydmps").origin).parent
+
+        self.dataset_path = f"{pkg_path}/dataset"
+        self.save_model_path = f"{pkg_path}/models/{model_name}.pt"
         self.net = DMPNetwork(self.input_size, self.hidden_size, self.output_size)
 
         if load_model == True:
@@ -78,7 +79,15 @@ class DMPs(object):
 
         # set up the CS
         self.cs = CanonicalSystem(dt=self.dt, **kwargs)
-        self.timesteps = int(self.cs.run_time / self.dt)
+        self.timesteps = int(self.cs.run_time / self.dt)       
+
+    def set_y0(self, y0):
+        self.y0 = y0
+
+    def set_goal(self, goal):
+        self.goal = goal
+
+        self.check_offset()
 
         # set up the DMP system
         self.reset_state()
@@ -184,6 +193,9 @@ class DMPs(object):
 
     def rollout(self, current_point, timesteps=1.0, **kwargs):
         """Generate a system trial, no feedback is incorporated."""
+
+        if self.goal is None:
+            raise ValueError("Goal not set")
 
         # self.reset_state()
 

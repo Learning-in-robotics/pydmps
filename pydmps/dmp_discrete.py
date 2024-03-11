@@ -36,7 +36,7 @@ import copy
 class DMPs_discrete(DMPs):
     """An implementation of discrete DMPs"""
 
-    def __init__(self, load_model=False, current_point=None, goal=None, model_name=None, **kwargs):
+    def __init__(self, load_model=False, model_name=None, **kwargs):
 
         # Specify the input, hidden, and output layer sizes
         self.input_size = 7  # Input layer accepts (x, y)
@@ -50,13 +50,9 @@ class DMPs_discrete(DMPs):
         super(DMPs_discrete, self).__init__(
             pattern="discrete",
             load_model=load_model,
-            y0=current_point,
-            goal=goal,
             model_name=model_name,
             **kwargs,
         )
-
-        self.check_offset()
 
     def gen_front_term(self, x, dmp_num):
         """Generates the diminishing front term on
@@ -125,10 +121,11 @@ if __name__ == "__main__":
     dmp = DMPs_discrete(
         n_dmps=6,
         load_model=load_model,
-        current_point=current_point,
-        goal=my_goal,
         model_name=model_name,
     )
+
+    dmp.set_y0(current_point)
+    dmp.set_goal(my_goal)
 
     if train_network:
         dmp.imitate_path()

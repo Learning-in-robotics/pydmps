@@ -24,6 +24,8 @@ from pydmps.cs import CanonicalSystem
 from pydmps.utils.dmpnet import DMPNetwork
 from pydmps.utils.parser import TrajectoryParser
 
+from torch.utils.data.dataset import random_split
+
 
 class DMPs(object):
     """Implementation of Dynamic Motor Primitives,
@@ -60,8 +62,8 @@ class DMPs(object):
         if goal is None:
             raise ValueError("Goal is required")
         self.goal = goal
-        self.dataset_path = "pydmps/utils/dataset"
-        self.save_model_path = f"pydmps/utils/{model_name}.pt"
+        self.dataset_path = "pydmps/dataset"
+        self.save_model_path = f"pydmps/models/{model_name}.pt"
         self.net = DMPNetwork(self.input_size, self.hidden_size, self.output_size)
 
         if load_model == True:
@@ -99,19 +101,30 @@ class DMPs(object):
         data = torch.tensor(parser.data_matrix, dtype=torch.float)
         labels = torch.tensor(parser.labels_matrix, dtype=torch.float)
         dataset = torch.utils.data.TensorDataset(data, labels)
-        loader = torch.utils.data.DataLoader(
-            dataset, batch_size=self.batch_size, shuffle=True
-        )
+
+        # Split dataset into training and validation sets
+        train_size = int(0.8 * len(dataset))
+        val_size = len(dataset) - train_size
+        train_dataset, val_dataset = random_split(dataset, [train_size, val_size])
+
+        train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=self.batch_size, shuffle=True)
+        val_loader = torch.utils.data.DataLoader(val_dataset, batch_size=self.batch_size, shuffle=False)
 
         criterion = nn.MSELoss()
         optimizer = optim.Adam(self.net.parameters(), lr=self.learning_rate)
 
-        print("Starting Training....")
+        print("Starting Training with Early Stopping....")
+
+        best_val_loss = float("inf")
+        patience = 100  # Number of epochs to wait for improvement before stopping
+        patience_counter = 0  # Tracks how many epochs have gone by without improvement
+        early_stop = False
 
         for epoch in range(self.num_epochs):
+            self.net.train()  # Set model to training mode
             total_loss = 0.0
 
-            for inputs, targets in loader:
+            for inputs, targets in train_loader:
                 optimizer.zero_grad()
                 outputs = self.net(inputs)
                 loss = criterion(outputs, targets)
@@ -120,12 +133,41 @@ class DMPs(object):
 
                 total_loss += loss.item() * inputs.size(0)
 
-            if (epoch + 1) % 100 == 0:
-                avg_loss = total_loss / len(loader.dataset)
-                print(f"Epoch [{epoch + 1}/{self.num_epochs}], Loss: {avg_loss:.4f}")
+            avg_train_loss = total_loss / len(train_loader.dataset)
 
-        torch.save(self.net.state_dict(), self.save_model_path)
-        print("Training finished. Model saved as 'trained_model.pt'.")
+            # Validation phase
+            self.net.eval()  # Set model to evaluation mode
+            total_val_loss = 0.0
+            with torch.no_grad():
+                for inputs, targets in val_loader:
+                    outputs = self.net(inputs)
+                    loss = criterion(outputs, targets)
+                    total_val_loss += loss.item() * inputs.size(0)
+
+            avg_val_loss = total_val_loss / len(val_loader.dataset)
+
+            if (epoch + 1) % 100 == 0:
+                print(f'Epoch [{epoch + 1}/{self.num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}')
+
+            # Check for early stopping
+            if avg_val_loss < best_val_loss:
+                best_val_loss = avg_val_loss
+                torch.save(self.net.state_dict(), self.save_model_path)  # Save the best model
+                patience_counter = 0
+            else:
+                patience_counter += 1
+                if patience_counter >= patience:
+                    early_stop = True
+
+            if early_stop:
+                print(f"Stopping early at epoch {epoch + 1}. Best validation loss: {best_val_loss:.4f}")
+                break
+
+        if not early_stop:
+            # Ensure the best model is saved if we didn't stop early
+            torch.save(self.net.state_dict(), self.save_model_path)
+            
+        print("Training finished. Best model saved as 'trained_model.pt'.")
 
     def get_forcing_term(self, input_data):
         with torch.no_grad():

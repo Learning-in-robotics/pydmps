@@ -26,45 +26,11 @@ import yaml
 from pydmps.dmp import DMPs
 from pydmps.utils.dmpnet import DMPNetwork
 from pydmps.utils.parser import TrajectoryParser
+from pydmps.utils.plot_utils import plot_2d, plot_pose
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import copy
-
-
-def plot_pose(y_tracks, raw_y_tracks):
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection="3d")
-    
-    ax.plot(y_tracks[:, 0], y_tracks[:, 1], y_tracks[:, 2], label="DMP")
-    ax.plot(raw_y_tracks[:, 0], raw_y_tracks[:, 1], raw_y_tracks[:, 2], label="Raw")
-    
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.set_zlabel("Z")
-    ax.legend()
-
-    plt.show()
-
-def plot_2d(y_tracks, raw_y_tracks):
-    fig, ax = plt.subplots(3, 2, figsize=(6, 6))
-    ax[0, 0].plot(y_tracks[:, 0], y_tracks[:, 1])
-    ax[0, 0].set_title("xy")
-    ax[1, 0].plot(y_tracks[:, 1], y_tracks[:, 2])
-    ax[1, 0].set_title("yz")
-    ax[2, 0].plot(y_tracks[:, 2], y_tracks[:, 0])
-    ax[2, 0].set_title("zx")
-
-    # plot trajectory_1
-    ax[0, 1].plot(raw_y_tracks[:, 0], raw_y_tracks[:, 1])
-    ax[0, 1].set_title("xy")
-    ax[1, 1].plot(raw_y_tracks[:, 1], raw_y_tracks[:, 2])
-    ax[1, 1].set_title("yz")
-    ax[2, 1].plot(raw_y_tracks[:, 2], raw_y_tracks[:, 0])
-    ax[2, 1].set_title("zx")
-
-    plt.tight_layout()
-    plt.show()
 
 
 class DMPs_discrete(DMPs):
@@ -77,7 +43,7 @@ class DMPs_discrete(DMPs):
         self.hidden_size = 128  # Number of neurons in each hidden layer
         self.output_size = 6  # Output layer predicts forcing terms for (x, y)
         self.learning_rate = 0.01
-        self.num_epochs = 10000
+        self.num_epochs = 5000
         self.batch_size = 100
 
         # call super class constructor
@@ -133,10 +99,10 @@ if __name__ == "__main__":
     else:
         load_model = True
 
-    if args.model_name is None:
+    if args.model_name is None and not train_network:
         model_name = "best"
     else:
-        model_name = args.model_name
+        model_name = args.model_name if args.model_name is not None else "trained_model"
 
     current_point = [
         -0.22413162636020156,
@@ -187,7 +153,7 @@ if __name__ == "__main__":
     test = np.array(test)
 
     # load trajectory_1.yaml from dataset
-    dataset_path = "pydmps/utils/dataset"
+    dataset_path = "pydmps/dataset"
     # load yaml file
     with open(f"{dataset_path}/trajectory_1.yaml") as file:
         trajectory1 = yaml.load(file, Loader=yaml.FullLoader)

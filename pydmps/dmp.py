@@ -33,9 +33,10 @@ class DMPs(object):
         self,
         n_dmps,
         load_model=False,
+        model_name=None,
         dt=0.01,
-        y0=0,
-        goal=1,
+        y0=None,
+        goal=None,
         ay=None,
         by=None,
         **kwargs,
@@ -53,14 +54,14 @@ class DMPs(object):
 
         self.n_dmps = n_dmps
         self.dt = dt
-        if isinstance(y0, (int, float)):
-            y0 = np.ones(self.n_dmps) * y0
+        if y0 is None:
+            raise ValueError("Initial position is required")
         self.y0 = y0
-        if isinstance(goal, (int, float)):
-            goal = np.ones(self.n_dmps) * goal
+        if goal is None:
+            raise ValueError("Goal is required")
         self.goal = goal
         self.dataset_path = "pydmps/utils/dataset"
-        self.save_model_path = "pydmps/utils/trained_model.pt"
+        self.save_model_path = f"pydmps/utils/{model_name}.pt"
         self.net = DMPNetwork(self.input_size, self.hidden_size, self.output_size)
 
         if load_model == True:
@@ -151,10 +152,10 @@ class DMPs(object):
         #         timesteps = self.timesteps
 
         # set up tracking vectors
-        y_track = np.zeros((timesteps, self.n_dmps))
-        dy_track = np.zeros((timesteps, self.n_dmps))
-        ddy_track = np.zeros((timesteps, self.n_dmps))
-        f_track = np.zeros((timesteps, self.n_dmps))
+        # y_track = np.zeros((timesteps, self.n_dmps))
+        # dy_track = np.zeros((timesteps, self.n_dmps))
+        # ddy_track = np.zeros((timesteps, self.n_dmps))
+        # f_track = np.zeros((timesteps, self.n_dmps))
 
         # for t in range(timesteps):
         # run and record timestep

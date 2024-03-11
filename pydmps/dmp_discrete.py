@@ -51,7 +51,7 @@ def plot_pose(y_tracks):
 class DMPs_discrete(DMPs):
     """An implementation of discrete DMPs"""
 
-    def __init__(self, load_model=False, **kwargs):
+    def __init__(self, load_model=False, current_point=None, goal=None, model_name=None, **kwargs):
 
         # Specify the input, hidden, and output layer sizes
         self.input_size = 7  # Input layer accepts (x, y)
@@ -63,7 +63,12 @@ class DMPs_discrete(DMPs):
 
         # call super class constructor
         super(DMPs_discrete, self).__init__(
-            pattern="discrete", load_model=load_model, **kwargs
+            pattern="discrete",
+            load_model=load_model,
+            y0=current_point,
+            goal=goal,
+            model_name=model_name,
+            **kwargs,
         )
 
         self.check_offset()
@@ -95,22 +100,24 @@ if __name__ == "__main__":
     argparse = argparse.ArgumentParser(description="DMPs_discrete")
     argparse.add_argument("--train", action="store_true", help="Train the network")
     argparse.add_argument("--test", action="store_true", help="Test the network")
+    argparse.add_argument("--model_name", type=str, help="Name of the model to save")
+    argparse.add_argument("--plot_3d", action="store_true", help="Plot in 3D")
 
     args = argparse.parse_args()
 
     train_network = args.train
     test_network = args.test
+    plot_3d = args.plot_3d
 
     if train_network:
         load_model = False
     else:
         load_model = True
 
-    dmp = DMPs_discrete(n_dmps=6, load_model=load_model)
-
-    if train_network:
-        dmp.imitate_path()
-        exit()
+    if args.model_name is None:
+        model_name = "best"
+    else:
+        model_name = args.model_name
 
     current_point = [
         -0.22413162636020156,
@@ -130,55 +137,66 @@ if __name__ == "__main__":
         -0.08656735603506686,
     ]
 
+    dmp = DMPs_discrete(
+        n_dmps=6,
+        load_model=load_model,
+        current_point=current_point,
+        goal=my_goal,
+        model_name=model_name,
+    )
+
+    if train_network:
+        dmp.imitate_path()
+        exit()
+
     # change the scale of the movement
     dmp.goal = my_goal
     # dmp.goal[1] = -2.51
     test = np.array([])
+    # add current_point to test
+    test = np.append(test, current_point)
     x_track = 0.99
     print("start")
     while x_track > 0.0001:
         y_track, dy_track, ddy_track, f_track, x_track = dmp.rollout(current_point, 1)
-        current_point = copy.deepcopy(y_track.tolist())
+        current_point = copy.deepcopy(y_track)
         # append the y_track to test
-        if test.size == 0:
-            test = y_track
-        else:
-            test = np.vstack((test, y_track))
+        test = np.vstack((test, y_track))
     print("end")
-
+    
     # convert to numpy array
     test = np.array(test)
-    print(test.shape)
-    # plot_pose(test)
 
-    # load trajectory_1.yaml from dataset
-    dataset_path = "pydmps/utils/dataset"
-    # load yaml file
-    with open(f"{dataset_path}/trajectory_1.yaml") as file:
-        trajectory1 = yaml.load(file, Loader=yaml.FullLoader)
+    if plot_3d:
+        plot_pose(test)
+    else:
+        # load trajectory_1.yaml from dataset
+        dataset_path = "pydmps/utils/dataset"
+        # load yaml file
+        with open(f"{dataset_path}/trajectory_1.yaml") as file:
+            trajectory1 = yaml.load(file, Loader=yaml.FullLoader)
 
-    trajectory1_y_track = trajectory1["y_track"]
-    trajectory1_y_track = np.array(trajectory1_y_track)
-    print(trajectory1_y_track.shape)
+        trajectory1_y_track = trajectory1["y_track"]
+        trajectory1_y_track = np.array(trajectory1_y_track)
 
-    # plot_pose(trajectory1_y_track)
+        # plot_pose(trajectory1_y_track)
 
-    # plot xy, yz and zx points
-    fig, ax = plt.subplots(3, 2, figsize=(6, 6))
-    ax[0, 0].plot(test[:, 0], test[:, 1])
-    ax[0, 0].set_title("xy")
-    ax[1, 0].plot(test[:, 1], test[:, 2])
-    ax[1, 0].set_title("yz")
-    ax[2, 0].plot(test[:, 2], test[:, 0])
-    ax[2, 0].set_title("zx")
+        # plot xy, yz and zx points
+        fig, ax = plt.subplots(3, 2, figsize=(6, 6))
+        ax[0, 0].plot(test[:, 0], test[:, 1])
+        ax[0, 0].set_title("xy")
+        ax[1, 0].plot(test[:, 1], test[:, 2])
+        ax[1, 0].set_title("yz")
+        ax[2, 0].plot(test[:, 2], test[:, 0])
+        ax[2, 0].set_title("zx")
 
-    # plot trajectory_1
-    ax[0, 1].plot(trajectory1_y_track[:, 0], trajectory1_y_track[:, 1])
-    ax[0, 1].set_title("xy")
-    ax[1, 1].plot(trajectory1_y_track[:, 1], trajectory1_y_track[:, 2])
-    ax[1, 1].set_title("yz")
-    ax[2, 1].plot(trajectory1_y_track[:, 2], trajectory1_y_track[:, 0])
-    ax[2, 1].set_title("zx")
+        # plot trajectory_1
+        ax[0, 1].plot(trajectory1_y_track[:, 0], trajectory1_y_track[:, 1])
+        ax[0, 1].set_title("xy")
+        ax[1, 1].plot(trajectory1_y_track[:, 1], trajectory1_y_track[:, 2])
+        ax[1, 1].set_title("yz")
+        ax[2, 1].plot(trajectory1_y_track[:, 2], trajectory1_y_track[:, 0])
+        ax[2, 1].set_title("zx")
 
-    plt.tight_layout()
-    plt.show()
+        plt.tight_layout()
+        plt.show()

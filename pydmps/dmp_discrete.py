@@ -15,12 +15,13 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-
+import argparse
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import yaml
 
 from pydmps.dmp import DMPs
 from pydmps.utils.dmpnet import DMPNetwork
@@ -48,9 +49,9 @@ def plot_pose(y_tracks):
 class DMPs_discrete(DMPs):
     """An implementation of discrete DMPs"""
 
-    def __init__(self, **kwargs):
+    def __init__(self, load_model = False, **kwargs):
         # call super class constructor
-        super(DMPs_discrete, self).__init__(pattern="discrete", **kwargs)
+        super(DMPs_discrete, self).__init__(pattern="discrete", load_model=load_model, **kwargs)
 
          
 
@@ -59,13 +60,10 @@ class DMPs_discrete(DMPs):
         self.hidden_size = 128  # Number of neurons in each hidden layer
         self.output_size = 6  # Output layer predicts forcing terms for (x, y)
         self.learning_rate = 0.01
-        self.num_epochs = 1000
+        self.num_epochs = 5000
+        self.batch_size = 100
 
-        
-
-        self.check_offset()
-
-    
+        self.check_offset()    
    
 
     def gen_front_term(self, x, dmp_num):
@@ -93,78 +91,80 @@ class DMPs_discrete(DMPs):
 # Test code
 # ==============================
 if __name__ == "__main__":
-    import matplotlib.pyplot as plt
+    argparse = argparse.ArgumentParser(description='DMPs_discrete')
+    argparse.add_argument('--train', action='store_true', help='Train the network')
+    argparse.add_argument('--test', action='store_true', help='Test the network')
 
-    # test normal run
-    # dmp = DMPs_discrete(dt=0.05, n_dmps=1, n_bfs=10, w=np.zeros((1, 10)))
-    # y_track, dy_track, ddy_track, f_track  = dmp.rollout()
- 
-    # plt.figure(1, figsize=(6, 3))
-    # plt.plot(np.ones(len(y_track)) * dmp.goal, "r--", lw=2)
-    # plt.plot(y_track, lw=2)
-    # plt.title("DMP system - no forcing term")
-    # plt.xlabel("time (ms)")
-    # plt.ylabel("system trajectory")
-    # plt.legend(["goal", "system state"], loc="lower right")
-    # plt.tight_layout()
+    args = argparse.parse_args()
 
-    def generate_random_curve(start_point=(0, 0), end_point=(5, 3), amplitude_sin=0.5, frequency_sin=2*np.pi/(5-0), phase_shift_sin=np.pi/2):
-        # Generate x points between start_point and end_point
-        x = np.linspace(start_point[0], end_point[0], 100)
+    train_network = args.train
+    test_network = args.test
 
-        # Fit the inverted parabola to the given points (0, 0) and (5, 3)
-        a_parabola = -end_point[1] / end_point[0]**2
-        b_parabola = 0
-        c_parabola = 0
+    if train_network:
+        load_model = False
+    else:
+        load_model = True
 
-        # Calculate y points using the inverted parabola
-        y_parabola = a_parabola * x**2 + b_parabola * x + c_parabola
+    dmp = DMPs_discrete(n_dmps=6, load_model=load_model)
 
-        # Calculate y points for the sine curve
-        y_sin = amplitude_sin * np.sin(frequency_sin * (x - start_point[0]) + phase_shift_sin)
-
-        # Combine the parabola and sine curve
-        y_combined = y_parabola + y_sin
-
-        # Return (x, y) as NumPy arrays
-        return np.array([x, y_combined])
-
-    xy_array = generate_random_curve()
-
-    # test imitation of path run
-    # plt.figure(2, figsize=(6, 4))
-    # n_bfs = [10, 30, 50, 100, 10000]
-    n_bfs = [100]
-
-    # a straight line to target
-    path1 = np.sin(np.arange(0, 1, 0.01) * 5)
-    # a strange path to target
-    path2 = np.zeros(path1.shape)
-    path2[int(len(path2) / 2.0) :] = 0.5
-
-    #comment below when not using the random curve
-    path1 = xy_array[0]
-    path2 = xy_array[1]
+    if train_network:
+        dmp.imitate_path()
+        exit()
 
     current_point = [-0.22413162636020156, 0.03672257898841529, 1.0070652249653813, -2.672549100764965, 0.11178945152440055, -0.05323406781316968]
 
     my_goal = [0.2405904497616017, 0.025670480673161248, 0.9405305042288513, -2.627904589695221, 0.07141495502943067, -0.08656735603506686]
-    # for ii, bfs in enumerate(n_bfs):
-    dmp = DMPs_discrete(n_dmps=6)
-
-    # dmp.imitate_path()
+    
     # change the scale of the movement
     dmp.goal = my_goal
     # dmp.goal[1] = -2.51
-    test=[]
+    test=np.array([])
     x_track = 0.99
     print("start")
     while (x_track>0.0001):
         y_track, dy_track, ddy_track, f_track, x_track = dmp.rollout(current_point,1)
-        print(y_track)        
         current_point = copy.deepcopy(y_track.tolist())
-        test.append(current_point)        
-    # test = np.array(test)
-    print(test)
-    plot_pose(test)
+        # append the y_track to test
+        if test.size==0:
+            test = y_track
+        else:
+            test = np.vstack((test, y_track))
+    print("end")
+
+    # convert to numpy array
+    test = np.array(test)
+    print(test.shape)
+    # plot_pose(test)
+
+    # load trajectory_1.yaml from dataset
+    dataset_path = 'pydmps/utils/dataset'
+    # load yaml file
+    with open(f'{dataset_path}/trajectory_1.yaml') as file:
+        trajectory1 = yaml.load(file, Loader=yaml.FullLoader)
+
+    trajectory1_y_track = trajectory1['y_track']
+    trajectory1_y_track = np.array(trajectory1_y_track)
+    print(trajectory1_y_track.shape)
+
+    # plot_pose(trajectory1_y_track)
+
+    # plot xy, yz and zx points
+    fig, ax = plt.subplots(3, 2, figsize=(6, 6))
+    ax[0, 0].plot(test[:, 0], test[:, 1])
+    ax[0, 0].set_title('xy')
+    ax[1, 0].plot(test[:, 1], test[:, 2])
+    ax[1, 0].set_title('yz')
+    ax[2, 0].plot(test[:, 2], test[:, 0])
+    ax[2, 0].set_title('zx')
+
+    # plot trajectory_1 
+    ax[0, 1].plot(trajectory1_y_track[:, 0], trajectory1_y_track[:, 1])
+    ax[0, 1].set_title('xy')
+    ax[1, 1].plot(trajectory1_y_track[:, 1], trajectory1_y_track[:, 2])
+    ax[1, 1].set_title('yz')
+    ax[2, 1].plot(trajectory1_y_track[:, 2], trajectory1_y_track[:, 0])
+    ax[2, 1].set_title('zx')
+    
+    plt.tight_layout()
+    plt.show()
     

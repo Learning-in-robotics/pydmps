@@ -50,11 +50,12 @@ class DMPs(object):
         if isinstance(goal, (int, float)):
             goal = np.ones(self.n_dmps) * goal
         self.goal = goal
-        self.dataset_path = '/home/hamsadatta/test/dmp/rl/pydmps/pydmps/utils/dataset'
-        self.save_model_path = '/home/hamsadatta/test/dmp/rl/pydmps/pydmps/utils/trained_model.pt'        
+        self.dataset_path = 'pydmps/utils/dataset'
+        self.save_model_path = 'pydmps/utils/trained_model.pt'        
         self.net = DMPNetwork(7, 128, 6)
 
-        if load_model == True:             
+        if load_model == True:
+            print("Loading trained model...")
             # Load the trained model's state dictionary
             self.net.load_state_dict(torch.load(self.save_model_path))
             # Set the model to evaluation mode
@@ -86,40 +87,33 @@ class DMPs(object):
         parser.process_folder()
         print("Data Loading Done")
 
-        data = parser.data_matrix
-        labels = parser.labels_matrix
-        num_of_trajectories = len(data)
+        data = torch.tensor(parser.data_matrix, dtype=torch.float)
+        labels = torch.tensor(parser.labels_matrix, dtype=torch.float)
+        dataset = torch.utils.data.TensorDataset(data, labels)
+        loader = torch.utils.data.DataLoader(dataset, batch_size=self.batch_size, shuffle=True)
 
-        # Define loss function and optimizer
         criterion = nn.MSELoss()
         optimizer = optim.Adam(self.net.parameters(), lr=self.learning_rate)
 
         print("Starting Training....")
 
-        # Training loop
         for epoch in range(self.num_epochs):
-            total_loss = 0.0  # Initialize the total loss for this epoch
+            total_loss = 0.0
 
-            # Iterate through each trajectory
-            for i in range(num_of_trajectories):
-                # Forward pass
-                outputs = self.net(torch.Tensor(data[i]))
-                loss = criterion(outputs, torch.Tensor(labels[i]))
-                
-                # Backpropagation and optimization
+            for inputs, targets in loader:
                 optimizer.zero_grad()
+                outputs = self.net(inputs)
+                loss = criterion(outputs, targets)
                 loss.backward()
                 optimizer.step()
 
-                total_loss += loss.item()  # Accumulate the loss for this batch
+                total_loss += loss.item() * inputs.size(0)
             
-            # Print training progress
             if (epoch + 1) % 100 == 0:
-                print(f'Epoch [{epoch + 1}/{self.num_epochs}], Loss: {total_loss:.4f}')
+                avg_loss = total_loss / len(loader.dataset)
+                print(f'Epoch [{epoch + 1}/{self.num_epochs}], Loss: {avg_loss:.4f}')
 
-        # Save the trained model to a .pt file
         torch.save(self.net.state_dict(), self.save_model_path)
-
         print("Training finished. Model saved as 'trained_model.pt'.")
     
     def get_forcing_term(self,input_data):

@@ -148,7 +148,7 @@ if __name__ == "__main__":
     
     # convert to numpy array
     test = np.array(test)
-
+    test[:, 1] *= -1
     # load trajectory_1.yaml from dataset
     dataset_path = "../pydmps/dataset"
     # load yaml file
@@ -157,6 +157,7 @@ if __name__ == "__main__":
 
     trajectory1_y_track = trajectory1["y_track"]
     trajectory1_y_track = np.array(trajectory1_y_track)
+    trajectory1_y_track[:, 1] *= -1
 
     if plot_3d:
         plot_pose(test, trajectory1_y_track)

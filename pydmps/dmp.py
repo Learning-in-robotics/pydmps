@@ -57,14 +57,14 @@ class DMPs(object):
 
         self.n_dmps = n_dmps
         self.dt = dt
-        if y0 is None:
-            raise ValueError("Initial position is required")
-        self.y0 = y0
-        if goal is None:
-            raise ValueError("Goal is required")
-        self.goal = goal
-        self.dataset_path = "pydmps/dataset"
-        self.save_model_path = f"pydmps/models/{model_name}.pt"
+        # if y0 is None:
+        #     raise ValueError("Initial position is required")
+        # self.y0 = y0
+        # if goal is None:
+        #     raise ValueError("Goal is required")
+        # self.goal = goal
+        self.dataset_path = "../pydmps/dataset"
+        self.save_model_path = f"../pydmps/models/{model_name}.pt"
         self.net = DMPNetwork(self.input_size, self.hidden_size, self.output_size)
 
         if load_model == True:

@@ -57,14 +57,14 @@ class DMPs(object):
 
         self.n_dmps = n_dmps
         self.dt = dt
-
-        self.y0 = None
-        self.goal = None
-
-        pkg_path = Path(importlib.util.find_spec("pydmps").origin).parent
-
-        self.dataset_path = f"{pkg_path}/dataset"
-        self.save_model_path = f"{pkg_path}/models/{model_name}.pt"
+        # if y0 is None:
+        #     raise ValueError("Initial position is required")
+        # self.y0 = y0
+        # if goal is None:
+        #     raise ValueError("Goal is required")
+        # self.goal = goal
+        self.dataset_path = "../pydmps/dataset"
+        self.save_model_path = f"../pydmps/models/{model_name}.pt"
         self.net = DMPNetwork(self.input_size, self.hidden_size, self.output_size)
 
         if load_model == True:
@@ -125,7 +125,7 @@ class DMPs(object):
         print("Starting Training with Early Stopping....")
 
         best_val_loss = float("inf")
-        patience = 100  # Number of epochs to wait for improvement before stopping
+        patience = 150  # Number of epochs to wait for improvement before stopping
         patience_counter = 0  # Tracks how many epochs have gone by without improvement
         early_stop = False
 

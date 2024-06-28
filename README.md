@@ -7,7 +7,7 @@ This repository is a Python implementation of DMPs, with accompanying tutorials 
 
 All that's required for the installation and running of the code is ```numpy```. To run the test code you will also need ```matplotlib``` for displaying the results.
 
-
+![Kinova simualtion](sim_kinova.png)
 ## Usage
 
 ### Train
